@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { DIMENSIONS, PALETTE, seededRandom } from './config.js';
+import { PLAN } from './plan.js';
 
 const plaster = new THREE.MeshStandardMaterial({ color: PALETTE.plaster, roughness: 0.94 });
 const plasterShade = new THREE.MeshStandardMaterial({ color: PALETTE.plasterShade, roughness: 0.96 });
@@ -93,6 +94,7 @@ function addRoofFringe(group, length, width, rise) {
 export function createThatchedRoof({ length, width, x = 0, z = 0, rotation = 0, height = DIMENSIONS.wallHeight }) {
   const group = new THREE.Group();
   const overhang = 0.58;
+  group.userData.isRoof = true;
   const run = width / 2;
   const rise = run * DIMENSIONS.roofPitch;
   const slope = Math.hypot(run + overhang, rise);
@@ -187,10 +189,8 @@ function createWestWing() {
   const depth = DIMENSIONS.westDepth;
   const x = -9.8;
   const z = 0.4;
-  const body = box(length, 3.05, depth, plaster, 0, DIMENSIONS.floorY + 1.52, 0);
-  body.rotation.y = Math.PI / 2;
-  body.position.set(x - 0.25, DIMENSIONS.floorY + 1.52, z);
-  group.add(body);
+  // Room boundaries are explicit plan segments, leaving real door openings.
+  addDeckBoards(group, length, depth, x, z, Math.PI / 2);
   addDeckBoards(group, length + 0.15, 1.4, x + depth / 2 + 0.42, z, Math.PI / 2);
   const facade = createCourtyardFacade({ length, z: 0, rotation: Math.PI / 2, bays: 5, openBays: [3] });
   facade.position.set(x + depth / 2 + 0.05, 0, z);
@@ -250,11 +250,9 @@ function createSouthGate() {
 
 function createRailings() {
   const group = new THREE.Group();
-  const segments = [
-    [-6.5, 6.25, 7.2, 0],
-    [5.2, 6.1, 5.8, 0],
-    [6.9, 4.0, 4.2, Math.PI / 2],
-  ];
+  const segments = PLAN.rails.map(([ax, az, bx, bz]) => [
+    (ax+bx)/2, (az+bz)/2, Math.hypot(bx-ax,bz-az), -Math.atan2(bz-az,bx-ax),
+  ]);
   for (const [x, z, length, rotation] of segments) {
     const rail = new THREE.Group();
     rail.add(box(length, 0.11, 0.1, darkWood, 0, 1.04, 0));
@@ -274,6 +272,15 @@ export function createArchitecture() {
   const group = new THREE.Group();
   group.name = 'Architecture';
   group.add(createNorthWing(), createWestWing(), createEastPavilion(), createSouthGate(), createRailings());
+  for (const [ax,az,bx,bz] of PLAN.walls) {
+    const wall = box(Math.hypot(bx-ax,bz-az), 2.8, .16, plaster,
+      (ax+bx)/2, DIMENSIONS.floorY+1.4, (az+bz)/2);
+    wall.rotation.y = -Math.atan2(bz-az,bx-ax);
+    group.add(wall);
+  }
+  const [left,right,back,front] = PLAN.regions.foreground;
+  const paving = new THREE.MeshStandardMaterial({color: 0xa49c88, roughness: 1});
+  group.add(box(right-left,.025,front-back,paving,(left+right)/2,.48,(back+front)/2));
 
   // Stone thresholds and a narrow courtyard path anchor the wooden structures to the terrain.
   const stone = new THREE.MeshStandardMaterial({ color: PALETTE.stone, roughness: 0.96 });
