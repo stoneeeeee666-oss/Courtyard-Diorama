@@ -61,7 +61,9 @@ const waterMaterial = new THREE.ShaderMaterial({
       float fresnel = pow(1.0 - max(dot(viewDir, vec3(0.0, 1.0, 0.0)), 0.0), 2.5);
       float bands = sin(vWorld.x * 1.7 + vWorld.z * 1.35) * .5 + .5;
       vec3 color = mix(uDeep, uShallow, .35 + bands * .2);
+      float ripple = sin(vWorld.x * 12.0 + vWorld.z * 8.0 + vWave * 80.0);
       color += (.035 + vWave * .8) * max(dot(uLight, vec3(0.0, 1.0, 0.0)), 0.0);
+      color += pow(max(ripple, 0.0), 18.0) * .035;
       color = mix(color, vec3(.83, .86, .80), fresnel * .28);
       gl_FragColor = vec4(color, .76 + fresnel * .12);
     }
@@ -110,7 +112,7 @@ function createBridge() {
     const z = -length / 2 + t * length;
     const arch = Math.sin(t * Math.PI) * 0.56;
     const nextArch = Math.sin(Math.min(1, t + 1 / (count - 1)) * Math.PI) * 0.56;
-    const plank = new THREE.Mesh(new THREE.BoxGeometry(2.25, 0.18, length / count - 0.035), plankMaterial);
+    const plank = new THREE.Mesh(new THREE.BoxGeometry(1.35, 0.18, length / count - 0.035), plankMaterial);
     plank.position.set(0, 1.05 + arch, z);
     plank.rotation.x = -Math.atan2(nextArch - arch, length / count);
     plank.castShadow = true;
@@ -118,14 +120,14 @@ function createBridge() {
     group.add(plank);
   }
 
-  for (const x of [-0.82, 0.82]) {
+  for (const x of [-0.48, 0.48]) {
     const beam = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.2, length), supportMaterial);
     beam.position.set(x, 0.92, 0);
     beam.castShadow = true;
     group.add(beam);
   }
   for (const z of [-3.4, 0, 3.4]) {
-    for (const x of [-0.85, 0.85]) {
+    for (const x of [-0.48, 0.48]) {
       const post = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.14, 1.2, 6), supportMaterial);
       post.position.set(x, 0.55, z);
       post.castShadow = true;

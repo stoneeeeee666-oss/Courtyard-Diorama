@@ -203,10 +203,11 @@ function createEastPavilion() {
   }
   group.add(box(width - 0.4, 0.2, 0.2, darkWood, x, DIMENSIONS.floorY + 3.12, z - length / 2 + 0.55));
   group.add(box(width - 0.4, 0.2, 0.2, darkWood, x, DIMENSIONS.floorY + 3.12, z + length / 2 - 0.55));
-  group.add(createThatchedRoof({ length, width: width + 0.8, x, z, rotation: Math.PI / 2 }));
+  // Reference: roof shelters the rear dining bay; the foreground is an open timber terrace.
+  group.add(createThatchedRoof({ length: 6.8, width: width + 0.8, x, z: z - 3.35, rotation: Math.PI / 2 }));
 
   // A restrained rear wall preserves the open dining-hall character visible in the reference.
-  group.add(box(0.18, 2.55, length - 1.1, plaster, x + width / 2 - 0.36, DIMENSIONS.floorY + 1.34, z));
+  group.add(box(0.18, 2.55, 5.7, plaster, x + width / 2 - 0.36, DIMENSIONS.floorY + 1.34, z - 3.35));
   for (let i = 0; i < 4; i += 1) {
     group.add(box(0.12, 2.7, 0.15, darkWood, x + width / 2 - 0.46, DIMENSIONS.floorY + 1.4, z - 4.4 + i * 2.9));
   }

@@ -26,10 +26,10 @@ function createLeafGeometry(length = 1.8, width = 0.72, segments = 7) {
     const t = i / segments;
     const half = Math.sin(t * Math.PI) * width * 0.5 * (0.88 + t * 0.12);
     const bend = Math.sin(t * Math.PI) * 0.14 + t * t * 0.16;
-    vertices.push(-half, t * length, bend, half, t * length, bend);
+    vertices.push(-half, t * length, bend - half * .28, 0, t * length, bend + half * .16, half, t * length, bend - half * .28);
     if (i < segments) {
-      const a = i * 2;
-      indices.push(a, a + 1, a + 2, a + 1, a + 3, a + 2);
+      const a = i * 3;
+      indices.push(a, a + 1, a + 3, a + 1, a + 4, a + 3, a + 1, a + 2, a + 4, a + 2, a + 5, a + 4);
     }
   }
   const geometry = new THREE.BufferGeometry();
@@ -92,6 +92,11 @@ function createMonsteraGeometry() {
     shape.holes.push(hole);
   }
   const geometry = new THREE.ShapeGeometry(shape, 8);
+  const positions = geometry.attributes.position;
+  for (let i = 0; i < positions.count; i += 1) {
+    const x = positions.getX(i), y = positions.getY(i);
+    positions.setZ(i, .22 * Math.sin(y * 2.2) - x * x * .3 - .14 * y * y);
+  }
   geometry.computeVertexNormals();
   return geometry;
 }
@@ -135,8 +140,8 @@ function createFern(seed, scale = 1) {
     const stem = new THREE.Mesh(new THREE.TubeGeometry(curve, 8, .018, 5, false), stemMaterial);
     stem.castShadow = true;
     group.add(stem);
-    for (let i = 2; i < 8; i += 1) {
-      const t = i / 9;
+    for (let i = 1; i < 12; i += 1) {
+      const t = i / 13;
       const center = curve.getPoint(t);
       const taper = 1 - Math.abs(t - .52) * .75;
       for (const side of [-1, 1]) {
@@ -251,8 +256,33 @@ export function createVegetation() {
 
   place(group, createBamboo(500, .85), 4.55, -3.4, -.2);
   place(group, createBamboo(501, .72), -5.15, -3.0, .4);
+  // Deliberate banks: tall foliage against the galleries, low ferns beside the bridge.
+  [[-5.6,-2.2,.9],[-5.7,.2,1.1],[-5.3,2.2,.85],[4.9,-2,1.05],[4.8,2.6,.9]].forEach(([x,z,s],i) =>
+    place(group, createBroadLeafPlant(710+i,s),x,z,random()*6));
+  [[-4.3,4.3,1.15],[3.8,4.1,1.2],[4.9,.6,.95]].forEach(([x,z,s],i) =>
+    place(group, createMonstera(730+i,s),x,z,random()*6));
+  [[-3.1,3.7,.6],[-3.8,-2.8,.7],[3.6,-3.8,.65],[-5,1.7,.7]].forEach(([x,z,s],i) =>
+    place(group, createFern(750+i,s),x,z,random()*6));
 
   const covers = [[-4.7, 3.1], [-4.8, -2.1], [-2.9, 3.9], [3.55, 3.25], [4.15, -2.9], [2.6, -3.8], [-3.7, -3.7]];
   covers.forEach(([x, z], i) => place(group, createGroundCover(600 + i, .72), x, z, random() * 6));
+  // Batch shared leaf prototypes while retaining each leaf's curved geometry and transform.
+  group.updateMatrixWorld(true);
+  const batches = new Map();
+  group.traverse((mesh) => {
+    if (!mesh.isMesh || !leafMaterials.includes(mesh.material)) return;
+    const key = mesh.geometry.uuid + mesh.material.uuid;
+    if (!batches.has(key)) batches.set(key, []);
+    batches.get(key).push(mesh);
+  });
+  for (const leaves of batches.values()) {
+    const batch = new THREE.InstancedMesh(leaves[0].geometry, leaves[0].material, leaves.length);
+    leaves.forEach((leaf, i) => {
+      batch.setMatrixAt(i, leaf.matrixWorld);
+      leaf.removeFromParent();
+    });
+    batch.castShadow = batch.receiveShadow = true;
+    group.add(batch);
+  }
   return group;
 }
