@@ -157,12 +157,26 @@ function addDeckBoards(group, width, depth, x, z, rotation = 0) {
 
 function createNorthWing() {
   const group = new THREE.Group();
+  group.name = 'OpenCorridor';
   const length = DIMENSIONS.northLength;
   const depth = DIMENSIONS.northDepth;
   const z = -7.2;
-  group.add(box(length, 3.1, depth, plaster, 0, DIMENSIONS.floorY + 1.55, z - 0.25));
-  addDeckBoards(group, length + 0.5, 1.35, 0, z + depth / 2 + 0.42);
-  group.add(createCourtyardFacade({ length, z: z + depth / 2 + 0.05, bays: 7, openBays: [3] }));
+  // Both sides are open. No infill, sill or facade crosses the walking route.
+  addDeckBoards(group, length + 0.5, depth + 1.35, 0, z - 0.2);
+  const postTop = DIMENSIONS.wallHeight;
+  const postHeight = postTop - DIMENSIONS.floorY;
+  const rows = [z - depth / 2, z + depth / 2];
+  for (const row of rows) {
+    group.add(box(length + .2, .18, .18, darkWood, 0, postTop - .09, row));
+    for (let i = 0; i <= 7; i += 1) {
+      group.add(box(.17, postHeight, .17, darkWood, -length / 2 + i * length / 7,
+        DIMENSIONS.floorY + postHeight / 2, row));
+    }
+  }
+  for (let i = 0; i <= 7; i += 1) {
+    group.add(box(.16, .18, depth + .25, darkWood, -length / 2 + i * length / 7,
+      postTop - .18, z));
+  }
   group.add(createThatchedRoof({ length, width: depth + 1.35, z: z - 0.2 }));
   return group;
 }
@@ -187,6 +201,12 @@ function createWestWing() {
 
 function createEastPavilion() {
   const group = new THREE.Group();
+  group.name = 'CutawayStructure';
+  const foregroundRoofGroup = new THREE.Group();
+  foregroundRoofGroup.name = 'foregroundRoofGroup';
+  foregroundRoofGroup.visible = false;
+  // Reserved for a future documented roof reconstruction; deliberately empty.
+  group.add(foregroundRoofGroup);
   const x = 8.7;
   const z = 1.1;
   const length = DIMENSIONS.eastLength;
@@ -203,13 +223,12 @@ function createEastPavilion() {
   }
   group.add(box(width - 0.4, 0.2, 0.2, darkWood, x, DIMENSIONS.floorY + 3.12, z - length / 2 + 0.55));
   group.add(box(width - 0.4, 0.2, 0.2, darkWood, x, DIMENSIONS.floorY + 3.12, z + length / 2 - 0.55));
-  // Reference: roof shelters the rear dining bay; the foreground is an open timber terrace.
+  // The foreground belongs to the building: its upper structure is cut away in the reference.
   group.add(createThatchedRoof({ length: 6.8, width: width + 0.8, x, z: z - 3.35, rotation: Math.PI / 2 }));
 
-  // A restrained rear wall preserves the open dining-hall character visible in the reference.
-  group.add(box(0.18, 2.55, 5.7, plaster, x + width / 2 - 0.36, DIMENSIONS.floorY + 1.34, z - 3.35));
-  for (let i = 0; i < 4; i += 1) {
-    group.add(box(0.12, 2.7, 0.15, darkWood, x + width / 2 - 0.46, DIMENSIONS.floorY + 1.4, z - 4.4 + i * 2.9));
+  // Open framing in the visible dining bay; no speculative continuous side wall.
+  for (const row of rows) {
+    group.add(box(.18, .2, 6.25, darkWood, x + row, DIMENSIONS.wallHeight - .1, z - 3.15));
   }
   return group;
 }
