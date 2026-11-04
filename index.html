@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#e9e5da" />
+    <meta name="description" content="可交互的岭南草屋庭院微缩景观" />
+    <title>饭堂前小院 · Courtyard Diorama</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath fill='%2393856c' d='M6 31 32 12l26 19-4 5-22-16L10 36z'/%3E%3Cpath fill='%23514b3f' d='M14 35h36v18H14z'/%3E%3Cpath fill='%23e7e4da' d='M20 39h10v14H20zm15 0h9v8h-9z'/%3E%3C/svg%3E" />
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+    <link rel="stylesheet" href="./style.css" />
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+          "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <main id="app" aria-label="三维庭院模型">
+      <header class="title-block">
+        <p class="eyebrow">COURTYARD STUDY · 01</p>
+        <h1>饭堂前小院</h1>
+        <p class="subtitle">草木深处，自有清凉</p>
+      </header>
+
+      <div id="scene" aria-hidden="true"></div>
+
+      <div class="legend" aria-hidden="true">
+        <span>建筑围合</span><i></i><span>草木庭心</span><i></i><span>桥下清池</span>
+      </div>
+
+      <div class="controls">
+        <p><span class="mouse-icon">↔</span> 拖动环绕 · 滚轮缩放</p>
+        <button id="reset-view" type="button" aria-label="恢复默认视角">
+          <span>↻</span> 归位
+        </button>
+      </div>
+
+      <div id="loading" role="status">
+        <span></span>
+        <p>庭院正在成景</p>
+      </div>
+
+      <noscript>请启用 JavaScript 以观看三维庭院。</noscript>
+    </main>
+    <script type="module" src="./src/scene.js"></script>
+  </body>
+</html>
