@@ -3,8 +3,6 @@ import { DIMENSIONS, PALETTE, seededRandom } from './config.js';
 import { PLAN } from './plan.js';
 
 const plaster = new THREE.MeshStandardMaterial({ color: PALETTE.plaster, roughness: 0.94 });
-const plasterShade = new THREE.MeshStandardMaterial({ color: PALETTE.plasterShade, roughness: 0.96 });
-const wood = new THREE.MeshStandardMaterial({ color: PALETTE.wood, roughness: 0.83 });
 const darkWood = new THREE.MeshStandardMaterial({ color: PALETTE.darkWood, roughness: 0.9 });
 const floorWood = new THREE.MeshStandardMaterial({ color: 0x8f785e, roughness: 0.88 });
 
@@ -57,7 +55,7 @@ const thatch = new THREE.MeshStandardMaterial({
 });
 const thatchEdge = new THREE.MeshStandardMaterial({ color: PALETTE.roofDark, roughness: 1 });
 
-function addRoofFringe(group, length, width, rise) {
+function addRoofFringe(group, length, width, rise, height) {
   const strands = Math.max(16, Math.floor(length * 3.6));
   const geometry = new THREE.BoxGeometry(0.035, 0.34, 0.035);
   const instances = new THREE.InstancedMesh(geometry, thatchEdge, strands * 2);
@@ -68,7 +66,7 @@ function addRoofFringe(group, length, width, rise) {
     for (let i = 0; i < strands; i += 1) {
       dummy.position.set(
         -length / 2 + (i + 0.5) * (length / strands),
-        DIMENSIONS.wallHeight - 0.06 - random() * 0.11,
+        height - 0.06 - random() * 0.11,
         side * (width / 2 + 0.48),
       );
       dummy.rotation.set((random() - 0.5) * 0.1, 0, (random() - 0.5) * 0.12);
@@ -86,7 +84,7 @@ function addRoofFringe(group, length, width, rise) {
     thatchEdge,
   );
   ridge.rotation.z = Math.PI / 2;
-  ridge.position.y = DIMENSIONS.wallHeight + rise + 0.08;
+  ridge.position.y = height + rise + 0.08;
   shadows(ridge);
   group.add(ridge);
 }
@@ -105,43 +103,46 @@ export function createThatchedRoof({ length, width, x = 0, z = 0, rotation = 0, 
       new THREE.BoxGeometry(length + overhang * 2, 0.3, slope),
       thatch,
     );
-    panel.position.set(0, height + rise / 2, side * (run / 2 + overhang * 0.18));
+    panel.position.set(0, height + rise / 2, side * (run + overhang) / 2);
     panel.rotation.x = side * angle;
     shadows(panel);
     group.add(panel);
   }
 
-  addRoofFringe(group, length, width, rise);
+  addRoofFringe(group, length, width, rise, height);
   group.position.set(x, 0, z);
   group.rotation.y = rotation;
   return group;
 }
 
-function createCourtyardFacade({ length, z, x = 0, rotation = 0, bays = 6, openBays = [] }) {
+// A full timber facade: solid lower panels, dense lattice windows and real door bays.
+function createCourtyardFacade({ length, x = 0, z = 0, rotation = 0, bays = 6, openBays = [] }) {
   const group = new THREE.Group();
   const bayWidth = length / bays;
-  const facadeY = DIMENSIONS.floorY + 1.78;
-
+  const floor = DIMENSIONS.floorY + 0.06;
+  const top = DIMENSIONS.wallHeight;
   for (let i = 0; i <= bays; i += 1) {
-    const px = -length / 2 + i * bayWidth;
-    group.add(box(0.17, 3.45, 0.17, darkWood, px, facadeY, z));
+    group.add(box(.17, top - floor, .17, darkWood,
+      -length / 2 + i * bayWidth, (floor + top) / 2, 0));
   }
-  group.add(box(length + 0.3, 0.19, 0.19, darkWood, 0, DIMENSIONS.floorY + 3.15, z));
-  group.add(box(length + 0.3, 0.14, 0.2, darkWood, 0, DIMENSIONS.floorY + 1.28, z));
-
+  group.add(box(length, .2, .18, darkWood, 0, top - .1, 0));
   for (let i = 0; i < bays; i += 1) {
     if (openBays.includes(i)) continue;
-    const cx = -length / 2 + (i + 0.5) * bayWidth;
-    const screen = box(bayWidth - 0.25, 1.66, 0.08, plasterShade, cx, DIMENSIONS.floorY + 2.18, z + 0.035);
-    screen.material = screen.material.clone();
-    screen.material.transparent = true;
-    screen.material.opacity = 0.84;
-    group.add(screen);
-    group.add(box(bayWidth - 0.2, 0.1, 0.13, darkWood, cx, DIMENSIONS.floorY + 2.18, z + 0.09));
-    group.add(box(0.09, 1.68, 0.13, darkWood, cx, DIMENSIONS.floorY + 2.18, z + 0.09));
+    const cx = -length / 2 + (i + .5) * bayWidth;
+    const w = bayWidth - .17;
+    group.add(box(w, .9, .12, darkWood, cx, floor + .45, 0));
+    // Opaque timber backing keeps A enclosed; lattice is articulated on both faces.
+    group.add(box(w, top - floor - .9, .045, floorWood, cx, (top + floor + .9) / 2, 0));
+    for (const side of [-1, 1]) {
+      for (let j = 0; j <= 8; j += 1) {
+        group.add(box(.045, 1.85, .055, darkWood, cx - w / 2 + j * w / 8, floor + 1.87, side * .07));
+      }
+      for (let j = 0; j <= 5; j += 1) {
+        group.add(box(w, .045, .055, darkWood, cx, floor + .95 + j * .37, side * .07));
+      }
+    }
   }
-
-  group.position.x = x;
+  group.position.set(x, 0, z);
   group.rotation.y = rotation;
   return group;
 }
@@ -157,94 +158,86 @@ function addDeckBoards(group, width, depth, x, z, rotation = 0) {
   group.add(deck);
 }
 
-function createNorthWing() {
+// Open structures share plan-aligned decks and post/beam rows. Ends remain walkable.
+function createOpenStructure(name, bounds, alongZ = false) {
+  const [left, right, back, front] = bounds;
+  const x = (left + right) / 2;
+  const z = (back + front) / 2;
+  const width = right - left;
+  const depth = front - back;
   const group = new THREE.Group();
-  group.name = 'OpenCorridor';
-  const length = DIMENSIONS.northLength;
-  const depth = DIMENSIONS.northDepth;
-  const z = -7.2;
-  // Both sides are open. No infill, sill or facade crosses the walking route.
-  addDeckBoards(group, length + 0.5, depth + 1.35, 0, z - 0.2);
-  const postTop = DIMENSIONS.wallHeight;
-  const postHeight = postTop - DIMENSIONS.floorY;
-  const rows = [z - depth / 2, z + depth / 2];
-  for (const row of rows) {
-    group.add(box(length + .2, .18, .18, darkWood, 0, postTop - .09, row));
-    for (let i = 0; i <= 7; i += 1) {
-      group.add(box(.17, postHeight, .17, darkWood, -length / 2 + i * length / 7,
-        DIMENSIONS.floorY + postHeight / 2, row));
+  group.name = name;
+  addDeckBoards(group, width, depth, x, z);
+  const length = alongZ ? depth : width;
+  const span = alongZ ? width : depth;
+  const frame = new THREE.Group();
+  const bays = Math.ceil(length / 2.8);
+  const floor = DIMENSIONS.floorY + .06;
+  const height = DIMENSIONS.wallHeight - floor;
+  for (const side of [-1, 1]) {
+    frame.add(box(length, .2, .18, darkWood, 0, DIMENSIONS.wallHeight - .1, side * (span / 2 - .12)));
+    for (let i = 0; i <= bays; i += 1) {
+      frame.add(box(.18, height, .18, darkWood, -length / 2 + i * length / bays,
+        floor + height / 2, side * (span / 2 - .12)));
     }
   }
-  for (let i = 0; i <= 7; i += 1) {
-    group.add(box(.16, .18, depth + .25, darkWood, -length / 2 + i * length / 7,
-      postTop - .18, z));
+  for (let i = 0; i <= bays; i += 1) {
+    frame.add(box(.16, .18, span, darkWood, -length / 2 + i * length / bays,
+      DIMENSIONS.wallHeight - .22, 0));
   }
-  group.add(createThatchedRoof({ length, width: depth + 1.35, z: z - 0.2 }));
+  frame.position.set(x, 0, z);
+  frame.rotation.y = alongZ ? Math.PI / 2 : 0;
+  group.add(frame, createThatchedRoof({length, width: span, x, z, rotation: frame.rotation.y}));
   return group;
+}
+
+function createNorthWing() {
+  return createOpenStructure('C_OpenCorridor', PLAN.regions.openCorridor);
 }
 
 function createWestWing() {
   const group = new THREE.Group();
-  const length = DIMENSIONS.westLength;
-  const depth = DIMENSIONS.westDepth;
-  const x = -9.8;
-  const z = 0.4;
-  // Room boundaries are explicit plan segments, leaving real door openings.
-  addDeckBoards(group, length, depth, x, z, Math.PI / 2);
-  addDeckBoards(group, length + 0.15, 1.4, x + depth / 2 + 0.42, z, Math.PI / 2);
-  const facade = createCourtyardFacade({ length, z: 0, rotation: Math.PI / 2, bays: 5, openBays: [3] });
-  facade.position.set(x + depth / 2 + 0.05, 0, z);
-  group.add(facade);
-  group.add(createThatchedRoof({ length, width: depth + 1.3, x, z, rotation: Math.PI / 2 }));
+  group.name = 'A_ContinuousMainHouse';
+  const [left, right, back, front] = PLAN.regions.west;
+  const length = front - back;
+  const width = right - left;
+  const x = (left + right) / 2;
+  const z = (back + front) / 2;
+  addDeckBoards(group, width, length, x, z);
+  group.add(
+    createCourtyardFacade({length, x: left, z, rotation: Math.PI / 2, bays: 6, openBays: [2]}),
+    createCourtyardFacade({length, x: right, z, rotation: Math.PI / 2, bays: 6}),
+    createCourtyardFacade({length: width, x, z: front, bays: 3, openBays: [1]}),
+    // North door connects the house to B without a wall across the passage.
+    createCourtyardFacade({length: width, x, z: back, bays: 3, openBays: [1]}),
+    createThatchedRoof({length, width, x, z, rotation: Math.PI / 2}),
+  );
+  return group;
+}
+
+function createPassage() {
+  const group = createOpenStructure('B_CoveredPassage', PLAN.regions.passage);
+  // House interfaces flank B; only north/south segments are walls, never its ends.
+  for (const [ax, az, bx, bz] of PLAN.walls) {
+    const wall = box(Math.hypot(bx - ax, bz - az), 2.8, .16, plaster,
+      (ax + bx) / 2, DIMENSIONS.floorY + 1.4, (az + bz) / 2);
+    wall.rotation.y = -Math.atan2(bz - az, bx - ax);
+    group.add(wall);
+  }
   return group;
 }
 
 function createEastPavilion() {
-  const group = new THREE.Group();
-  group.name = 'CutawayStructure';
-  const foregroundRoofGroup = new THREE.Group();
-  foregroundRoofGroup.name = 'foregroundRoofGroup';
-  foregroundRoofGroup.visible = false;
-  // Reserved for a future documented roof reconstruction; deliberately empty.
-  group.add(foregroundRoofGroup);
-  const x = 8.7;
-  const z = 1.1;
-  const length = DIMENSIONS.eastLength;
-  const width = DIMENSIONS.eastDepth;
-  addDeckBoards(group, length, width, x, z, Math.PI / 2);
-
-  const rows = [-width / 2 + 0.45, width / 2 - 0.45];
-  const columns = 5;
-  for (const row of rows) {
-    for (let i = 0; i < columns; i += 1) {
-      const localZ = -length / 2 + 0.55 + i * ((length - 1.1) / (columns - 1));
-      group.add(box(0.2, 3.2, 0.2, darkWood, x + row, DIMENSIONS.floorY + 1.6, z + localZ));
-    }
-  }
-  group.add(box(width - 0.4, 0.2, 0.2, darkWood, x, DIMENSIONS.floorY + 3.12, z - length / 2 + 0.55));
-  group.add(box(width - 0.4, 0.2, 0.2, darkWood, x, DIMENSIONS.floorY + 3.12, z + length / 2 - 0.55));
-  // The foreground belongs to the building: its upper structure is cut away in the reference.
-  group.add(createThatchedRoof({ length: 6.8, width: width + 0.8, x, z: z - 3.35, rotation: Math.PI / 2 }));
-
-  // Open framing in the visible dining bay; no speculative continuous side wall.
-  for (const row of rows) {
-    group.add(box(.18, .2, 6.25, darkWood, x + row, DIMENSIONS.wallHeight - .1, z - 3.15));
-  }
-  return group;
+  return createOpenStructure('E_OpenPavilion', PLAN.regions.right, true);
 }
 
-function createSouthGate() {
-  const group = new THREE.Group();
-  const x = -7.1;
-  const z = 8.05;
-  addDeckBoards(group, 5.1, 2.25, x, z);
-  for (const px of [-2, 2]) {
-    group.add(box(0.22, 2.85, 0.22, darkWood, x + px, DIMENSIONS.floorY + 1.42, z));
-  }
-  group.add(box(4.5, 0.2, 0.22, darkWood, x, DIMENSIONS.floorY + 2.78, z));
-  const roof = createThatchedRoof({ length: 5.7, width: 3, x, z, height: 3.05 });
-  roof.scale.y = 0.82;
-  group.add(roof);
+function createForegroundCorridor() {
+  const group = createOpenStructure('F_CoveredWalkway', PLAN.regions.foreground);
+  // Ground-cover surface only: no new vegetation, raised platform or paving south of F.
+  const [left, right, , front] = PLAN.regions.foreground;
+  const lawn = new THREE.MeshStandardMaterial({color: PALETTE.sage, roughness: 1});
+  group.add(box(right - left, .012, 11.1 - front, lawn,
+    (left + right) / 2, .47, (front + 11.1) / 2));
   return group;
 }
 
@@ -271,23 +264,7 @@ function createRailings() {
 export function createArchitecture() {
   const group = new THREE.Group();
   group.name = 'Architecture';
-  group.add(createNorthWing(), createWestWing(), createEastPavilion(), createSouthGate(), createRailings());
-  for (const [ax,az,bx,bz] of PLAN.walls) {
-    const wall = box(Math.hypot(bx-ax,bz-az), 2.8, .16, plaster,
-      (ax+bx)/2, DIMENSIONS.floorY+1.4, (az+bz)/2);
-    wall.rotation.y = -Math.atan2(bz-az,bx-ax);
-    group.add(wall);
-  }
-  const [left,right,back,front] = PLAN.regions.foreground;
-  const paving = new THREE.MeshStandardMaterial({color: 0xa49c88, roughness: 1});
-  group.add(box(right-left,.025,front-back,paving,(left+right)/2,.48,(back+front)/2));
-
-  // Stone thresholds and a narrow courtyard path anchor the wooden structures to the terrain.
-  const stone = new THREE.MeshStandardMaterial({ color: PALETTE.stone, roughness: 0.96 });
-  for (let i = 0; i < 8; i += 1) {
-    const slab = box(1.5, 0.12, 0.75, stone, -7.2 + i * 1.55, 0.48, 6.75 - i * 0.1);
-    slab.rotation.y = (i % 2 ? -1 : 1) * 0.025;
-    group.add(slab);
-  }
+  group.add(createWestWing(), createPassage(), createNorthWing(), createEastPavilion(),
+    createForegroundCorridor(), createRailings());
   return group;
 }
